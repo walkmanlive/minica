@@ -338,7 +338,8 @@ func main2() error {
 	var reuseKeys = flag.Bool("reuse-keys", false, "If only the key file exists, reuse it to generate the certificate")
 	var domains = flag.String("domains", "", "Comma separated domain names to include as Server Alternative Names.")
 	var ipAddresses = flag.String("ip-addresses", "", "Comma separated IP addresses to include as Server Alternative Names.")
-	var expireDate = flag.String("expire", "", "Certificate expiration date in YYYY-MM-DD format (default: 2 years and 30 days from now).")
+	var expireDate = flag.String("expire", "", "Certificate expiration date in YYYY-MM-DD format (cannot be used together with --days).")
+	var days = flag.Int("days", 0, "Certificate validity period in days (default: 2 years and 30 days; cannot be used together with --expire).")
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage of %s:\n", os.Args[0])
 		fmt.Fprintf(os.Stderr, `
@@ -378,6 +379,14 @@ will not overwrite existing keys or certificates.
 		fmt.Printf("Extra arguments: %s (maybe there are spaces in your domain list?)\n", flag.Args())
 		os.Exit(1)
 	}
+	if *expireDate != "" && *days != 0 {
+		fmt.Printf("Cannot specify both --expire and --days\n")
+		os.Exit(1)
+	}
+	if *days < 0 {
+		fmt.Printf("Invalid days %d (must be positive)\n", *days)
+		os.Exit(1)
+	}
 	notAfter := time.Now().AddDate(2, 0, 30)
 	if *expireDate != "" {
 		parsedDate, err := time.Parse("2006-01-02", *expireDate)
@@ -391,6 +400,8 @@ will not overwrite existing keys or certificates.
 			fmt.Printf("Expire date %q must be in the future\n", *expireDate)
 			os.Exit(1)
 		}
+	} else if *days > 0 {
+		notAfter = time.Now().AddDate(0, 0, *days)
 	}
 	domainSlice := split(*domains)
 	domainRe := regexp.MustCompile("^[A-Za-z0-9.*-]+$")
