@@ -48,3 +48,8 @@ $ minica --domains foo.com
 $ minica --domains '*.foo.com
 $ minica --ip-addresses 127.0.0.1
 ```
+# add new parameter --expire
+```
+$ minica --domains '*.foo.com --expire 36520
+
+```
