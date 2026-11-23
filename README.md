@@ -45,5 +45,6 @@ Mac OS users could alternatively use Homebrew: `brew install minica`
 $ minica --domains foo.com
 
 # Wildcard
-$ minica --domains '*.foo.com'
+$ minica --domains '*.foo.com
+$ minica --domains 'local' --ip-addresses 127.0.0.1
 ```
