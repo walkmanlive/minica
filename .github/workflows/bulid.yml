@@ -1,0 +1,43 @@
+name: Build Go Binary
+
+on:
+  push:
+    branches: [ "main", "master" ]
+    tags: [ "v*" ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        goos: [linux, darwin, windows]
+        goarch: [amd64, arm64]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: 'stable'
+          cache: true
+
+      - name: Build binary
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+        run: |
+          EXT=""
+          if [ "$GOOS" = "windows" ]; then
+            EXT=".exe"
+          fi
+          mkdir -p dist
+          go build -ldflags="-s -w" -o "dist/app-${GOOS}-${GOARCH}${EXT}" .
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: binaries-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: dist/*
