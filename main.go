@@ -251,7 +251,7 @@ func calculateSKID(pubKey crypto.PublicKey) ([]byte, error) {
 	return skid[:], nil
 }
 
-func sign(iss *issuer, domains []string, ipAddresses []string, alg x509.PublicKeyAlgorithm, reuseKey bool) (*x509.Certificate, error) {
+func sign(iss *issuer, domains []string, ipAddresses []string, alg x509.PublicKeyAlgorithm, reuseKey bool, notAfter time.Time) (*x509.Certificate, error) {
 	var cn string
 	if len(domains) > 0 {
 		cn = domains[0]
@@ -298,11 +298,7 @@ func sign(iss *issuer, domains []string, ipAddresses []string, alg x509.PublicKe
 		},
 		SerialNumber: serial,
 		NotBefore:    time.Now(),
-		// Set the validity period to 2 years and 30 days, to satisfy the iOS and
-		// macOS requirements that all server certificates must have validity
-		// shorter than 825 days:
-		// https://derflounder.wordpress.com/2019/06/06/new-tls-security-requirements-for-ios-13-and-macos-catalina-10-15/
-		NotAfter: time.Now().AddDate(2, 0, 30),
+		NotAfter:     notAfter,
 
 		KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageKeyEncipherment,
 		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
@@ -342,8 +338,10 @@ func main2() error {
 	var reuseKeys = flag.Bool("reuse-keys", false, "If only the key file exists, reuse it to generate the certificate")
 	var domains = flag.String("domains", "", "Comma separated domain names to include as Server Alternative Names.")
 	var ipAddresses = flag.String("ip-addresses", "", "Comma separated IP addresses to include as Server Alternative Names.")
+	var expireDate = flag.String("expire", "", "Certificate expiration date in YYYY-MM-DD format (default: 2 years and 30 days from now).")
 	flag.Usage = func() {
-		fmt.Fprintf(os.Stderr, "Usage of %s:\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "Usage of %s:
+", os.Args[0])
 		fmt.Fprintf(os.Stderr, `
 Minica is a simple CA intended for use in situations where the CA operator
 also operates each host where a certificate will be used. It automatically
@@ -374,25 +372,45 @@ will not overwrite existing keys or certificates.
 	if strings.ToLower(*caAlg) == "ecdsa" {
 		alg = x509.ECDSA
 	} else if strings.ToLower(*caAlg) != "rsa" {
-		fmt.Printf("Unrecognized algorithm: %s (use RSA or ECDSA)\n", *caAlg)
+		fmt.Printf("Unrecognized algorithm: %s (use RSA or ECDSA)
+", *caAlg)
 		os.Exit(1)
 	}
 	if len(flag.Args()) > 0 {
-		fmt.Printf("Extra arguments: %s (maybe there are spaces in your domain list?)\n", flag.Args())
+		fmt.Printf("Extra arguments: %s (maybe there are spaces in your domain list?)
+", flag.Args())
 		os.Exit(1)
+	}
+	notAfter := time.Now().AddDate(2, 0, 30)
+	if *expireDate != "" {
+		parsedDate, err := time.Parse("2006-01-02", *expireDate)
+		if err != nil {
+			fmt.Printf("Invalid expire date %q (expected YYYY-MM-DD): %s
+", *expireDate, err)
+			os.Exit(1)
+		}
+		// Set expiration to the end of the specified date (23:59:59 UTC)
+		notAfter = time.Date(parsedDate.Year(), parsedDate.Month(), parsedDate.Day(), 23, 59, 59, 0, time.UTC)
+		if !notAfter.After(time.Now()) {
+			fmt.Printf("Expire date %q must be in the future
+", *expireDate)
+			os.Exit(1)
+		}
 	}
 	domainSlice := split(*domains)
 	domainRe := regexp.MustCompile("^[A-Za-z0-9.*-]+$")
 	for _, d := range domainSlice {
 		if !domainRe.MatchString(d) {
-			fmt.Printf("Invalid domain name %q\n", d)
+			fmt.Printf("Invalid domain name %q
+", d)
 			os.Exit(1)
 		}
 	}
 	ipSlice := split(*ipAddresses)
 	for _, ip := range ipSlice {
 		if net.ParseIP(ip) == nil {
-			fmt.Printf("Invalid IP address %q\n", ip)
+			fmt.Printf("Invalid IP address %q
+", ip)
 			os.Exit(1)
 		}
 	}
@@ -400,6 +418,6 @@ will not overwrite existing keys or certificates.
 	if err != nil {
 		return err
 	}
-	_, err = sign(issuer, domainSlice, ipSlice, alg, *reuseKeys)
+	_, err = sign(issuer, domainSlice, ipSlice, alg, *reuseKeys, notAfter)
 	return err
 }
