@@ -340,8 +340,7 @@ func main2() error {
 	var ipAddresses = flag.String("ip-addresses", "", "Comma separated IP addresses to include as Server Alternative Names.")
 	var expireDate = flag.String("expire", "", "Certificate expiration date in YYYY-MM-DD format (default: 2 years and 30 days from now).")
 	flag.Usage = func() {
-		fmt.Fprintf(os.Stderr, "Usage of %s:
-", os.Args[0])
+		fmt.Fprintf(os.Stderr, "Usage of %s:\n", os.Args[0])
 		fmt.Fprintf(os.Stderr, `
 Minica is a simple CA intended for use in situations where the CA operator
 also operates each host where a certificate will be used. It automatically
@@ -372,28 +371,24 @@ will not overwrite existing keys or certificates.
 	if strings.ToLower(*caAlg) == "ecdsa" {
 		alg = x509.ECDSA
 	} else if strings.ToLower(*caAlg) != "rsa" {
-		fmt.Printf("Unrecognized algorithm: %s (use RSA or ECDSA)
-", *caAlg)
+		fmt.Printf("Unrecognized algorithm: %s (use RSA or ECDSA)\n", *caAlg)
 		os.Exit(1)
 	}
 	if len(flag.Args()) > 0 {
-		fmt.Printf("Extra arguments: %s (maybe there are spaces in your domain list?)
-", flag.Args())
+		fmt.Printf("Extra arguments: %s (maybe there are spaces in your domain list?)\n", flag.Args())
 		os.Exit(1)
 	}
 	notAfter := time.Now().AddDate(2, 0, 30)
 	if *expireDate != "" {
 		parsedDate, err := time.Parse("2006-01-02", *expireDate)
 		if err != nil {
-			fmt.Printf("Invalid expire date %q (expected YYYY-MM-DD): %s
-", *expireDate, err)
+			fmt.Printf("Invalid expire date %q (expected YYYY-MM-DD): %s\n", *expireDate, err)
 			os.Exit(1)
 		}
 		// Set expiration to the end of the specified date (23:59:59 UTC)
 		notAfter = time.Date(parsedDate.Year(), parsedDate.Month(), parsedDate.Day(), 23, 59, 59, 0, time.UTC)
 		if !notAfter.After(time.Now()) {
-			fmt.Printf("Expire date %q must be in the future
-", *expireDate)
+			fmt.Printf("Expire date %q must be in the future\n", *expireDate)
 			os.Exit(1)
 		}
 	}
@@ -401,16 +396,14 @@ will not overwrite existing keys or certificates.
 	domainRe := regexp.MustCompile("^[A-Za-z0-9.*-]+$")
 	for _, d := range domainSlice {
 		if !domainRe.MatchString(d) {
-			fmt.Printf("Invalid domain name %q
-", d)
+			fmt.Printf("Invalid domain name %q\n", d)
 			os.Exit(1)
 		}
 	}
 	ipSlice := split(*ipAddresses)
 	for _, ip := range ipSlice {
 		if net.ParseIP(ip) == nil {
-			fmt.Printf("Invalid IP address %q
-", ip)
+			fmt.Printf("Invalid IP address %q\n", ip)
 			os.Exit(1)
 		}
 	}
